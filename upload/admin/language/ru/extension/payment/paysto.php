@@ -1,11 +1,11 @@
 <?php
 // Heading
-$_['heading_title'] = 'PayMaster.ru - платежи онлайн';
+$_['heading_title'] = 'Paysto.ru - платежи онлайн';
 
 // Text
 $_['text_payment']   = 'Оплата';
 $_['text_success']   = 'Настройки модуля обновлены!';
-$_['text_paysto'] = '<a onclick="window.open(\'http://paysto.ru\');"><img src="view/image/payment/paysto.png" alt="PayMaster.ru" title="PayMaster.ru" style="width:30%" /></a>';
+$_['text_paysto'] = '<a onclick="window.open(\'http://paysto.ru\');"><img src="view/image/payment/paysto.png" alt="Paysto.ru" title="Paysto.ru" style="width:30%" /></a>';
 $_['text_url_suc']   = 'URL страницы успешной оплаты:';
 $_['text_url_res']   = 'URL страницы результата оплаты:';
 $_['text_url_fail']  = 'URL страницы неуспешной оплаты:';

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Платежная система PayMaster - онлайн касса и интеграция различных способов оплаты
+ * Payment plagin for Paysto gateway
  *
  * @cms    Opencart
  * @author     dev@agaxx.ru (Alexey Agafonov)
@@ -26,15 +26,15 @@
 /**
  * Тут объявляем константы
  */
-define('paystoTitle', 'Оплата через метод PayMaster');
-define('paystoTitleDesc', 'PayMaster решение номер один - платежный агрегатор.');
-define('paystoDesc', 'Оплата через агрегатор платежей "PayMaster"');
-define('titleEdit', 'Редактирование');
-define('textPayment', 'Оплата');
+define('paystoTitle', 'Payment with Paysto gateway');
+define('paystoTitleDesc', 'Paysto gateway - paymant in Opencart 3.');
+define('paystoDesc', 'Payment with Paysto gateway');
+define('titleEdit', 'Edit');
+define('textPayment', 'Payment');
 
 
 /**
- * Class ControllerExtensionPaymentPayMaster
+ * Class ControllerExtensionPaymentPaysto
  */
 class ControllerExtensionPaymentPaysto extends Controller
 {
@@ -49,7 +49,8 @@ class ControllerExtensionPaymentPaysto extends Controller
 
 
     /**
-     * Функция конструктор
+     * Constructor
+     *
      * ControllerExtensionPaymentPaysto constructor.
      * @param $registry
      */
@@ -59,9 +60,9 @@ class ControllerExtensionPaymentPaysto extends Controller
         $currentLanguage = $this->language->get('code');
     }
 
+
     /**
-     * Установщик, тут не нужен, но делаем для порадка
-     * @return [type] тут не нужен, но делаем для порадка
+     * Install
      */
     public function install()
     {
@@ -69,9 +70,9 @@ class ControllerExtensionPaymentPaysto extends Controller
 
     }
 
+
     /**
-     * Выводит меню с настройками
-     * Для администрирования модуляƒ
+     * Admin plugin
      */
     public function index()
     {

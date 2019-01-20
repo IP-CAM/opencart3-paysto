@@ -156,7 +156,7 @@ class ControllerExtensionPaymentPaysto extends Controller
         $order_info = $this->model_checkout_order->getOrder($order_id);
 
         if ((int)$order_info["order_status_id"] == (int)$this->config->get('payment_paysto_order_status_id')) {
-            $this->model_checkout_order->addOrderHistory($order_id, $this->config->get('payment_paysto_order_status_id'), 'PayMaster', true);
+            $this->model_checkout_order->addOrderHistory($order_id, $this->config->get('payment_paysto_order_status_id'), 'Paysto', true);
             $this->createLog(__METHOD__, $request, 'Платеж успешно завершен');
 
             // Сброс всех cookies и сессий
@@ -234,14 +234,14 @@ class ControllerExtensionPaymentPaysto extends Controller
             $sign = $this->getSign($this->request->post);
             if (($lmi_hash == $hash) && ($lmi_sign == $sign)) {
                 if ($order_info['order_status_id'] == 0) {
-                    $this->model_checkout_order->addOrderHistory($order_id, $this->config->get('payment_paysto_order_status_id'), 'Оплачено через PayMaster');
+                    $this->model_checkout_order->addOrderHistory($order_id, $this->config->get('payment_paysto_order_status_id'), 'Оплачено через Paysto');
                     exit;
                 }
                 if ($order_info['order_status_id'] != $this->config->get('payment_paysto_order_status_id')) {
-                    $this->model_checkout_order->addOrderHistory($order_id, $this->config->get('payment_paysto_order_status_id'), 'PayMaster', true);
+                    $this->model_checkout_order->addOrderHistory($order_id, $this->config->get('payment_paysto_order_status_id'), 'Paysto', true);
                 }
             } else {
-                $this->log->write("PayMaster sign or hash is not correct!");
+                $this->log->write("Paysto sign or hash is not correct!");
             }
         }
 
@@ -273,7 +273,7 @@ class ControllerExtensionPaymentPaysto extends Controller
         $LMI_MERCHANT_ID = $request['LMI_MERCHANT_ID'];
         //Получили номер заказа очень нам он нужен, смотрите ниже, что мы с ним будем вытворять
         $LMI_PAYMENT_NO = $request['LMI_PAYMENT_NO'];
-        //Номер платежа в системе PayMaster
+        //Номер платежа в системе Paysto
         $LMI_SYS_PAYMENT_ID = $request['LMI_SYS_PAYMENT_ID'];
         //Дата платежа
         $LMI_SYS_PAYMENT_DATE = $request['LMI_SYS_PAYMENT_DATE'];

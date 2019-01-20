@@ -1,5 +1,5 @@
 <?php
-$_['text_title']    = 'PayMaster.RU - мастер платежей';
+$_['text_title']    = 'Paysto.RU - мастер платежей';
 $_['text_order']    = 'Заказ';
 $_['text_success']  = 'Заказ успешно принят и утвержден.';
 $_['text_waiting']  = 'Заказ успешно принят.';
