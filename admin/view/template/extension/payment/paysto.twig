@@ -32,6 +32,7 @@
             <div class="panel-body">
                 <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-payment"
                       class="form-horizontal">
+
                     <div class="form-group required">
                         <label class="col-sm-2 control-label"
                                for="input-paysto_x_login">{{ entry_x_login }}</label>
@@ -58,25 +59,43 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
+                    <div class="form-group required">
                         <label class="col-sm-2 control-label"
-                               for="input-paysto_hash_alg">{{ entry_hash_alg }}</label>
+                               for="input-paysto_description">{{ entry_description }}</label>
                         <div class="col-sm-10">
-                            <select name="payment_paysto_hash_alg" id="input-paysto_hash_alg" class="form-control">
-                                <option value="sha256" {{ (payment_paysto_hash_alg=='sha256') ? 'selected="selected"' : '' }}>
-                                    sha256
-                                </option>
-                                <option value="md5" {{ (payment_paysto_hash_alg=='md5') ? 'selected="selected"' : '' }}>md5
-                                </option>
-                                <option value="sha1" {{ (payment_paysto_hash_alg=='sha1') ? 'selected="selected"' : '' }}>
-                                    sha1
-                                </option>
-                            </select>
-                            {% if (error_paysto_hash_alg) %}
-                                <div class="text-danger">{{ error_paysto_hash_alg }}</div>
+                            <textarea name="payment_paysto_description" id="input-paysto_description" class="form-control" placeholder="{{ entry_description }}">{{ payment_paysto_description }}</textarea>
+                            {% if (error_description) %}
+                                <div class="text-danger">{{ error_description }}</div>
                             {% endif %}
                         </div>
                     </div>
+
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label"
+                               for="input-paysto_useOnlyList">{{ entry_useOnlyList }}</label>
+                        <div class="col-sm-10">
+                            <input type="hidden" name="payment_paysto_useOnlyList" value="0"/>
+                            <input type="checkbox" name="payment_paysto_useOnlyList"
+                                   value="1" {{ payment_paysto_useOnlyList?'checked':'' }}
+                                   id="input-paysto_useOnlyList" class="form-control"/>
+                            {% if (error_useOnlyList) %}
+                                <div class="text-danger">{{ error_useOnlyList }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label"
+                               for="input-paysto_serversList">{{ entry_serversList }}</label>
+                        <div class="col-sm-10">
+                            <textarea name="payment_paysto_serversList" id="input-paysto_serversList" class="form-control" placeholder="{{ entry_serversList }}">{{ payment_paysto_serversList }}</textarea>
+                            {% if (error_serversList) %}
+                                <div class="text-danger">{{ error_serversList }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+
 
                     <div class="form-group">
                         <label class="col-sm-2 control-label"
