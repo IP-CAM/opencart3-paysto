@@ -24,7 +24,7 @@
  */
 
 /**
- * Тут объявляем константы
+ * Constant declaration
  */
 define('paystoTitle', 'Payment with Paysto gateway');
 define('paystoTitleDesc', 'Paysto gateway - paymant in Opencart 3.');
@@ -38,7 +38,18 @@ define('textPayment', 'Payment');
  */
 class ControllerExtensionPaymentPaysto extends Controller
 {
-
+    
+    
+    /** @var array Devafult servers */
+    private $defaultServers = array(
+        '95.213.209.218',
+        '95.213.209.219',
+        '95.213.209.220',
+        '95.213.209.221',
+        '95.213.209.222'
+    );
+    
+    
     private $error = array();
 
     /**
@@ -183,28 +194,28 @@ class ControllerExtensionPaymentPaysto extends Controller
             $data['payment_paysto_secret_key'] = $this->config->get('payment_paysto_secret_key');
         }
 
-        if (isset($this->request->post['paysto_description'])) {
-            $data['paysto_description'] = $this->request->post['paysto_description'];
+        if (isset($this->request->post['payment_paysto_description'])) {
+            $data['payment_paysto_description'] = $this->request->post['payment_paysto_description'];
         } else {
-            $data['paysto_description'] = $this->config->get('paysto_description');
+            $data['payment_paysto_description'] = $this->config->get('payment_paysto_description');
         }
 
         if (isset($this->request->post['paysto_useOnlyList'])) {
-            $data['paysto_useOnlyList'] = $this->request->post['paysto_useOnlyList'];
+            $data['payment_paysto_useOnlyList'] = $this->request->post['payment_paysto_useOnlyList'];
         } else {
-            $data['paysto_useOnlyList'] = $this->config->get('paysto_useOnlyList');
+            $data['payment_paysto_useOnlyList'] = $this->config->get('payment_paysto_useOnlyList');
         }
-
-        if (isset($this->request->post['paysto_serversList'])) {
-            $data['paysto_serversList'] = $this->request->post['paysto_serversList'];
+        
+        if (isset($this->request->post['payment_paysto_serversList'])) {
+            $data['payment_paysto_serversList'] = $this->request->post['payment_paysto_serversList'];
         } else {
             if (!$this->config->get('paysto_serversList')) {
-                $data['paysto_serversList'] = implode("\n", $this->defaultServers);
+                $data['payment_paysto_serversList'] = implode("\n", $this->defaultServers);
             } else {
-                $data['paysto_serversList'] = $this->config->get('paysto_serversList');
+                $data['payment_paysto_serversList'] = $this->config->get('payment_paysto_serversList');
             }
         }
-
+        
         if (isset($this->request->post['payment_paysto_order_status_id'])) {
             $data['payment_paysto_order_status_id'] = $this->request->post['payment_paysto_order_status_id'];
         } else {
@@ -273,45 +284,31 @@ class ControllerExtensionPaymentPaysto extends Controller
 
 
     }
-
-
+    
+    
     /**
-     * Получение налоговых ставок
-     * @return [type] [description]
+     * Get tax rate
+     *
+     * @return array
      */
     private function get_tax_rules()
     {
         return array(
             array(
-                'id' => 0,
-                'name' => '18'
+                'id' => 'Y',
+                'name' => 'With VAT'
             ),
             array(
-                'id' => 1,
-                'name' => '10'
-            ),
-            array(
-                'id' => 2,
-                'name' => '0'
-            ),
-            array(
-                'id' => 3,
-                'name' => 'no'
-            ),
-            array(
-                'id' => 4,
-                'name' => '18/118'
-            ),
-            array(
-                'id' => 5,
-                'name' => '10/110'
+                'id' => 'N',
+                'name' => 'Without VAT'
             )
         );
     }
 
 
     /**
-     * Валидация формы
+     * Validation of settings
+     *
      * @return bool
      */
     private function validate()
@@ -326,6 +323,10 @@ class ControllerExtensionPaymentPaysto extends Controller
 
         if (!$this->request->post['payment_paysto_secret_key']) {
             $this->error['secret_key'] = $this->language->get('error_secret_key');
+        }
+    
+        if (!$this->request->post['payment_paysto_description']) {
+            $this->error['description'] = $this->language->get('error_description');
         }
 
         return !$this->error;

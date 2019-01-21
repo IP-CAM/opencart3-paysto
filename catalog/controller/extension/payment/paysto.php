@@ -5,27 +5,29 @@ class ControllerExtensionPaymentPaysto extends Controller
     const STATUS_TAX_OFF = 'no_vat';
     const MAX_POS_IN_CHECK = 100;
     const BEGIN_POS_IN_CHECK = 0;
-
+    
+    
     /**
-     * Формируем полностью
-     * @return [type] [description]
+     * Index
+     *
+     * @return mixed
      */
     public function index()
     {
+        $x_line_item = '';
+        
         $data['button_confirm'] = $this->language->get('button_confirm');
         $data['button_back'] = $this->language->get('button_back');
-        $data['action'] = 'https://paysto.ru/Payment/Init';
+        $data['action'] = 'https://paysto.com/ru/pay/AuthorizeNet';
 
         $this->load->language('extension/payment/paysto');
-
         $this->load->model('extension/payment/paysto');
 
         $order = $this->model_checkout_order->getOrder($this->session->data['order_id']);
 
         $order_products = $this->cart->getProducts();
-
-        //Продукты в заказе
-        // Сумма для продуктов
+        
+        // Products in order
         $product_amount = 0;
 
         if ($order_products) {
@@ -79,6 +81,71 @@ class ControllerExtensionPaymentPaysto extends Controller
         $data['fail_url'] = $this->url->link('extension/payment/paysto/fail', '', true);
 
         $data['description'] = $this->language->get('text_order') . ' ' . $data['order_id'];
+        
+        /*************************************************************************************************************/
+        $data['pos'] = self::BEGIN_POS_IN_CHECK;
+        $this->load->model('checkout/order');
+        $order = $this->model_checkout_order->getOrder($this->session->data['order_id']);
+        $amount = number_format($order['total'], 2, ".", "");
+        $currency = strtoupper($order['currency_code']);
+        $order_id = $this->session->data['order_id'];
+        $now = time();
+    
+        $data['x_login'] = $this->config->get('paysto_x_login');
+        $data['x_email'] = $order['email'];
+        $data['x_fp_sequence'] = $order_id;
+        $data['x_invoice_num'] = $order_id;
+        $data['x_amount'] = $amount;
+        $data['x_currency_code'] = $currency;
+        $data['x_fp_timestamp'] = $now;
+        $data['x_description'] = $this->config->get('paysto_description') . ' ' . $order_id;
+        $data['x_fp_hash'] = $this->get_x_fp_hash($this->config->get('paysto_x_login'), $order_id,
+            $now, $amount, $currency);
+        $data['x_relay_response'] = 'TRUE';
+        $data['x_relay_url'] = $this->url->link('extension/payment/paysto/callback', false);
+    
+        $order_products = $this->cart->getProducts();
+    
+        //product
+        if ($order_products) {
+            foreach ($order_products as $pos => $order_product) {
+                $lineArr = array();
+                $lineArr[] = '№' . $pos;
+                $lineArr[] = substr($order_product['model'], 0, 30);
+                $lineArr[] = substr($order_product['name'], 0, 254);
+                $lineArr[] = substr($order_product['quantity'], 0, 254);
+                $lineArr[] = number_format($order_product['price'], 2, '.',
+                    '');
+                $lineArr[] = $this->config->get('tax_status') ? $this->getTax($order_product['product_id']) : self::STATUS_TAX_OFF;
+                $x_line_item .= implode('<|>', $lineArr) . "0<|>\n";
+            }
+        }
+    
+        $order_totals = $this->model_account_order->getOrderTotals($this->session->data['order_id']);
+    
+        //delivery service
+        $pos++;
+    
+        foreach ($order_totals as $service) {
+            if (in_array($service['code'], $services) && ($service['value'] > 0)) {
+                $lineArr = array();
+                $lineArr[] = '№' . $pos;
+                $lineArr[] = substr($service['code'], 0, 30);
+                $lineArr[] = substr($service['title'], 0, 254);
+                $lineArr[] = '1';
+                $lineArr[] = number_format($service['value'], 2, '.',
+                    '');
+                $lineArr[] = self::STATUS_TAX_OFF;
+                $x_line_item .= implode('<|>', $lineArr) . "0<|>\n";
+                $pos++;
+            }
+        }
+    
+        $data['x_line_item'] = $x_line_item;
+        
+        /*************************************************************************************************************/
+        
+        
         $this->createLog(__METHOD__, $data);
 
         return $this->load->view('extension/payment/paysto', $data);
