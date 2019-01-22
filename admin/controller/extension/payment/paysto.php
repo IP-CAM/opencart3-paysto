@@ -295,11 +295,11 @@ class ControllerExtensionPaymentPaysto extends Controller
     {
         return array(
             array(
-                'id' => 'Y',
+                'id' => 1,
                 'name' => 'With VAT'
             ),
             array(
-                'id' => 'N',
+                'id' => 0,
                 'name' => 'Without VAT'
             )
         );

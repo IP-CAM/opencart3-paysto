@@ -1,7 +1,38 @@
 <?php
 
+/**
+ * Payment plagin for Paysto gateway
+ *
+ * @cms    Opencart
+ * @author     dev@agaxx.ru (Alexey Agafonov)
+ * @version    3.3.1
+ * @license
+ * @copyright  Copyright (c) 2018 Paysto (http://www.paysto.ru)
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+/**
+ * Class ControllerExtensionPaymentPaysto
+ *
+ */
 class ControllerExtensionPaymentPaysto extends Controller
 {
+    
+    /**
+     * Contant block
+     */
     const STATUS_TAX_OFF = 'no_vat';
     const MAX_POS_IN_CHECK = 100;
     const BEGIN_POS_IN_CHECK = 0;
@@ -46,7 +77,7 @@ class ControllerExtensionPaymentPaysto extends Controller
             }
         }
 
-        ///delivery service
+        // delivery service
         $pos++;
 
         if ($order['total'] > $product_amount) {
@@ -146,41 +177,38 @@ class ControllerExtensionPaymentPaysto extends Controller
         return true;
     }
 
-
+    
     /**
-     * Неуспешный платеж сообщение пользователю
-     * @return [type] [description]
+     * Fail payment
+     *
+     * @return bool
      */
     public function fail()
     {
-        $this->createLog(__METHOD__, '', 'Платеж не выполнен');
+        $this->createLog(__METHOD__, '', 'Payment with Paysto system was failed');
         $this->response->redirect($this->url->link('checkout/checkout', '', 'SSL'));
         return true;
     }
 
-
+    
     /**
-     * Успешный платеж сообщение пользователю
-     * @return [type] [description]
+     * Successful payment
+     *
+     * @return bool
      */
     public function success()
     {
-
         $request = $this->request->post;
-
         if (empty($request)) {
             $request = $this->request->get;
         }
-
-        $order_id = $request["LMI_PAYMENT_NO"];
+        $order_id = $request["x_invoice_num"];
         $this->load->model('checkout/order');
         $order_info = $this->model_checkout_order->getOrder($order_id);
-
         if ((int)$order_info["order_status_id"] == (int)$this->config->get('payment_paysto_order_status_id')) {
             $this->model_checkout_order->addOrderHistory($order_id, $this->config->get('payment_paysto_order_status_id'), 'Paysto', true);
-            $this->createLog(__METHOD__, $request, 'Платеж успешно завершен');
-
-            // Сброс всех cookies и сессий
+            $this->createLog(__METHOD__, $request, 'Payment with Paysto was successful!');
+            // Reset all cookies and sessions
             unset($this->session->data['shipping_method']);
             unset($this->session->data['shipping_methods']);
             unset($this->session->data['payment_method']);
@@ -194,126 +222,105 @@ class ControllerExtensionPaymentPaysto extends Controller
             unset($this->session->data['vouchers']);
             unset($this->session->data['totals']);
 
-            // очищаем карточку
+            // Clear the cart
             $this->cart->clear();
-
             $this->response->redirect($this->url->link('checkout/success', '', 'SSL'));
 
             return true;
         }
-
         return false;
     }
 
+    
     /**
-     * Callback № 1 где проверяется подпись
+     * Callback when check sign
+     *
      * @return function [description]
      */
     public function callback()
     {
-        if (isset($this->request->post)) {
-            $this->createLog(__METHOD__, $this->request->post, 'Данные с сервиса PAYSTO');
+    
+        if (!isset($this->request->post)) {
+            exit();
         }
-
-        $order_id = $this->request->post["LMI_PAYMENT_NO"];
+    
+        $order_id = $this->request->post["x_invoice_num"];
+        $x_trans_id = $this->request->post["x_trans_id"];
+        $x_response_code = $this->request->post["x_response_code"];
         $this->load->model('checkout/order');
-        $order_info = $this->model_checkout_order->getOrder($order_id);
-
-        $amount = number_format($order_info['total'], 2, '.', '');
-        $currency = $order_info['currency_code'];
-        
-        $x_login = $this->config->get('payment_paysto_x_login');
-
-        // Если у нас есть предварительные запрос
-        if (isset($this->request->post['LMI_PREREQUEST'])) {
-            if ($this->request->post['LMI_MERCHANT_ID'] == $x_login && $this->request->post['LMI_PAYMENT_AMOUNT'] == $amount) {
-                echo 'YES';
-                exit;
+        $order = $this->model_checkout_order->getOrder($order_id);
+        $amount = number_format($order['total'], 2, '.', '');
+        $x_login = $this->config->get('paysto_x_login');
+    
+        if ($order['order_status_id'] == $this->config->get('paysto_order_status_id')) {
+            try {
+                $this->success();
+                return true;
+            } catch (\Exception $exception) {
+            
+            }
+        }
+    
+        $HTTP_X_FORWARDED_FOR = isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? $_SERVER['HTTP_X_FORWARDED_FOR'] : '127.0.0.1';
+        $HTTP_CF_CONNECTING_IP = isset($_SERVER['HTTP_CF_CONNECTING_IP']) ? $_SERVER['HTTP_CF_CONNECTING_IP'] : '127.0.0.1';
+        $HTTP_X_REAL_IP = isset($_SERVER['HTTP_X_REAL_IP']) ? $_SERVER['HTTP_X_REAL_IP'] : '127.0.0.1';
+        $REMOTE_ADDR = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1';
+        $GEOIP_ADDR = isset($_SERVER['GEOIP_ADDR']) ? $_SERVER['GEOIP_ADDR'] : '127.0.0.1';
+    
+        if ($this->config->get('payment_paysto_useOnlyList') &&
+            ((!in_array($HTTP_X_FORWARDED_FOR, $this->PaystoServers)) &&
+                (!in_array($HTTP_CF_CONNECTING_IP, $this->PaystoServers)) &&
+                (!in_array($HTTP_X_REAL_IP, $this->PaystoServers)) &&
+                (!in_array($REMOTE_ADDR, $this->PaystoServers)) &&
+                (!in_array($GEOIP_ADDR, $this->PaystoServers)))) {
+            if ($this->session->data['paysto_pay'] = 'success') {
+                $this->response->redirect($this->url->link('checkout/checkout', '', 'SSL'));
+                return true;
             } else {
-                echo 'FAIL';
-                exit;
+                try {
+                    session_destroy();
+                } catch (\Exception $exception) {
+                    $this->log->write($exception->getMessage());
+                }
+            }
+        }
+    
+        if (isset($this->request->post['x_MD5_Hash'])) {
+            $x_MD5_Hash = $this->request->post['x_MD5_Hash'];
+            if ($x_MD5_Hash == $this->get_x_MD5_Hash($x_login, $x_trans_id, $amount) && $x_response_code == 1) {
+                if ($order['order_status_id'] == 0) {
+                    try {
+                        $this->model_checkout_order->addOrderHistory($order_id, $this->config->get('payment_paysto_order_status_id'), 'Payment with Paysto');
+                    } catch
+                    (\Exception $exception) {
+                        $this->log->write($exception->getMessage());
+                        exit();
+                    }
+                    exit();
+                }
+                if ($order['order_status_id'] != $this->config->get('paysto_order_status_id') || $x_response_code != 1) {
+                    try {
+                        $this->model_checkout_order->addOrderHistory($order_id,
+                            $this->config->get('paysto_order_status_id'), 'Paysto', true);
+                    } catch (\Exception $exception) {
+                        $this->log->write($exception->getMessage());
+                        exit();
+                    }
+                    exit();
+                }
+            } else {
+                $this->log->write("Paysto sign is not correct or other error happen!");
             }
         }
 
-        // Проверка на совпадение ID мерчанта если нет уходим
-        if ($x_login != $this->request->post['LMI_MERCHANT_ID']) {
-            echo 'FAIL';
-            exit;
-        }
-
-        // Проверка на валюту и сумму платежа
-        if (($currency != $this->request->post['LMI_PAID_CURRENCY']) && ($amount != $this->request->post['LMI_PAYMENT_AMOUNT'])){
-            echo 'FAIL';
-            exit;
-        }
-
-        // Самая важная проверка HASH 
-        if (isset($this->request->post['LMI_HASH'])) {
-            $lmi_hash = $this->request->post['LMI_HASH'];
-            $lmi_sign = $this->request->post['SIGN'];
-            $hash = $this->getHash($this->request->post);
-            $sign = $this->getSign($this->request->post);
-            if (($lmi_hash == $hash) && ($lmi_sign == $sign)) {
-                if ($order_info['order_status_id'] == 0) {
-                    $this->model_checkout_order->addOrderHistory($order_id, $this->config->get('payment_paysto_order_status_id'), 'Оплачено через Paysto');
-                    exit;
-                }
-                if ($order_info['order_status_id'] != $this->config->get('payment_paysto_order_status_id')) {
-                    $this->model_checkout_order->addOrderHistory($order_id, $this->config->get('payment_paysto_order_status_id'), 'Paysto', true);
-                }
-            } else {
-                $this->log->write("Paysto sign or hash is not correct!");
-            }
-        }
-
     }
-
+    
+    
     /**
-     * Получение подписи для дополнительной безопасности
-     * @param  [type] $request фактически post запрос
-     * @return [type]          [description]
-     */
-    public function getSign($request)
-    {
-        $hash_alg = $this->config->get('payment_paysto_hash_alg');
-        $secret_key = htmlspecialchars_decode($this->config->get('payment_paysto_secret_key'));
-        $plain_sign = $request['LMI_MERCHANT_ID'] . $request['LMI_PAYMENT_NO'] . $request['LMI_PAID_AMOUNT'] . $request['LMI_PAID_CURRENCY'] . $secret_key;
-        return base64_encode(hash($hash_alg, $plain_sign, true));
-    }
-
-    /**
-     * Получаем HASH
-     * @param  [type] $request фактически post запрос
-     * @return [type]          [description]
-     */
-    public function getHash($request)
-    {
-        $hash_alg = $this->config->get('payment_paysto_hash_alg');
-        $SECRET = htmlspecialchars_decode($this->config->get('payment_paysto_secret_key'));
-        // Получаем ID продавца не из POST запроса, а из модуля (исключаем, тем самым его подмену)
-        $LMI_MERCHANT_ID = $request['LMI_MERCHANT_ID'];
-        //Получили номер заказа очень нам он нужен, смотрите ниже, что мы с ним будем вытворять
-        $LMI_PAYMENT_NO = $request['LMI_PAYMENT_NO'];
-        //Номер платежа в системе Paysto
-        $LMI_SYS_PAYMENT_ID = $request['LMI_SYS_PAYMENT_ID'];
-        //Дата платежа
-        $LMI_SYS_PAYMENT_DATE = $request['LMI_SYS_PAYMENT_DATE'];
-        $LMI_PAYMENT_AMOUNT = $request['LMI_PAYMENT_AMOUNT'];
-        //Теперь получаем валюту заказа, то что была в заказе
-        $LMI_CURRENCY =   $request['LMI_CURRENCY'];
-        $LMI_PAID_AMOUNT = $request['LMI_PAID_AMOUNT'];
-        $LMI_PAID_CURRENCY = $request['LMI_PAID_CURRENCY'];
-        $LMI_PAYMENT_SYSTEM = $request['LMI_PAYMENT_SYSTEM'];
-        $LMI_SIM_MODE = $request['LMI_SIM_MODE'];
-        $string = $LMI_MERCHANT_ID . ";" . $LMI_PAYMENT_NO . ";" . $LMI_SYS_PAYMENT_ID . ";" . $LMI_SYS_PAYMENT_DATE . ";" . $LMI_PAYMENT_AMOUNT . ";" . $LMI_CURRENCY . ";" . $LMI_PAID_AMOUNT . ";" . $LMI_PAID_CURRENCY . ";" . $LMI_PAYMENT_SYSTEM . ";" . $LMI_SIM_MODE . ";" . $SECRET;
-        $hash = base64_encode(hash($hash_alg, $string, true));
-        return $hash;
-    }
-
-    /**
-     * Получение налоговой информации по продукту
-     * @param  [type] $product_id  id продукта
-     * @return [type]             [description]
+     * Get product tax information
+     *
+     * @param $product_id
+     * @return mixed
      */
     protected function getTax($product_id)
     {
@@ -330,41 +337,26 @@ class ControllerExtensionPaymentPaysto extends Controller
         $tax_rules = array(
             array(
                 'id' => 0,
-                'name' => 'vat18',
+                'name' => 'Without VAT',
             ),
             array(
                 'id' => 1,
-                'name' => 'vat10',
-            ),
-            array(
-                'id' => 2,
-                'name' => 'vat0',
-            ),
-            array(
-                'id' => 3,
-                'name' => 'no_vat',
-            ),
-            array(
-                'id' => 4,
-                'name' => 'vat118',
-            ),
-            array(
-                'id' => 5,
-                'name' => 'vat110',
+                'name' => 'With VAT',
             ),
         );
         return $tax_rules[$tax_rule_id]['name'];
     }
-
+    
+    
     /**
-     * Моя любимая функция Logger
-     * @param  [type] $var  [description]
-     * @param  string $text [description]
-     * @return [type]       [description]
+     * Logger function to
+     *
+     * @param $var
+     * @param string $text
      */
     public function logger($var, $text = '')
     {
-        // Название файла
+        // File name
         $loggerFile = __DIR__ . '/logger.log';
         if (is_object($var) || is_array($var)) {
             $var = (string)print_r($var, true);
