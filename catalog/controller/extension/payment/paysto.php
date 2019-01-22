@@ -295,9 +295,6 @@ class ControllerExtensionPaymentPaysto extends Controller
     
         if (isset($this->request->post['x_MD5_Hash'])) {
             $x_MD5_Hash = $this->request->post['x_MD5_Hash'];
-    
-            $this->logger($this->request->post);
-            $this->logger($this->get_x_MD5_Hash($x_login, $x_trans_id, $amount));
             
             if ($x_MD5_Hash == $this->get_x_MD5_Hash($x_login, $x_trans_id, $amount) && $x_response_code == 1) {
                 if ($order['order_status_id'] == 0) {
