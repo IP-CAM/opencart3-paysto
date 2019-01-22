@@ -38,6 +38,13 @@ class ControllerExtensionPaymentPaysto extends Controller
     const BEGIN_POS_IN_CHECK = 0;
     
     
+    public function __construct($registry)
+    {
+        parent::__construct($registry);
+        // Set payment servers from Paysto
+        $this->PaystoServers = preg_split('/\r\n|[\r\n]/', $this->config->get('payment_paysto_serversList'));
+    }
+    
     /**
      * Index
      *
@@ -45,6 +52,7 @@ class ControllerExtensionPaymentPaysto extends Controller
      */
     public function index()
     {
+        
         $x_line_item = '';
         
         $data['button_confirm'] = $this->language->get('button_confirm');
@@ -104,15 +112,15 @@ class ControllerExtensionPaymentPaysto extends Controller
         $order_id = $this->session->data['order_id'];
         $now = time();
 
-        $data['x_login'] = $this->config->get('paysto_x_login');
+        $data['x_login'] = $this->config->get('payment_paysto_x_login');
         $data['x_email'] = $order['email'];
         $data['x_fp_sequence'] = $order_id;
         $data['x_invoice_num'] = $order_id;
         $data['x_amount'] = $amount;
         $data['x_currency_code'] = $currency;
         $data['x_fp_timestamp'] = $now;
-        $data['x_description'] = $this->config->get('paysto_description') . ' ' . $order_id;
-        $data['x_fp_hash'] = $this->get_x_fp_hash($this->config->get('paysto_x_login'), $order_id,
+        $data['x_description'] = $this->config->get('payment_paysto_description') . ' ' . $order_id;
+        $data['x_fp_hash'] = $this->get_x_fp_hash($this->config->get('payment_paysto_x_login'), $order_id,
             $now, $amount, $currency);
         $data['x_relay_response'] = 'TRUE';
         $data['x_relay_url'] = $this->url->link('extension/payment/paysto/callback', '' ,false);
@@ -250,9 +258,9 @@ class ControllerExtensionPaymentPaysto extends Controller
         $this->load->model('checkout/order');
         $order = $this->model_checkout_order->getOrder($order_id);
         $amount = number_format($order['total'], 2, '.', '');
-        $x_login = $this->config->get('paysto_x_login');
+        $x_login = $this->config->get('payment_paysto_x_login');
     
-        if ($order['order_status_id'] == $this->config->get('paysto_order_status_id')) {
+        if ($order['order_status_id'] == $this->config->get('payment_paysto_order_status_id')) {
             try {
                 $this->success();
                 return true;
@@ -287,6 +295,10 @@ class ControllerExtensionPaymentPaysto extends Controller
     
         if (isset($this->request->post['x_MD5_Hash'])) {
             $x_MD5_Hash = $this->request->post['x_MD5_Hash'];
+    
+            $this->logger($this->request->post);
+            $this->logger($this->get_x_MD5_Hash($x_login, $x_trans_id, $amount));
+            
             if ($x_MD5_Hash == $this->get_x_MD5_Hash($x_login, $x_trans_id, $amount) && $x_response_code == 1) {
                 if ($order['order_status_id'] == 0) {
                     try {
@@ -298,10 +310,10 @@ class ControllerExtensionPaymentPaysto extends Controller
                     }
                     exit();
                 }
-                if ($order['order_status_id'] != $this->config->get('paysto_order_status_id') || $x_response_code != 1) {
+                if ($order['order_status_id'] != $this->config->get('payment_paysto_order_status_id') || $x_response_code != 1) {
                     try {
                         $this->model_checkout_order->addOrderHistory($order_id,
-                            $this->config->get('paysto_order_status_id'), 'Paysto', true);
+                            $this->config->get('payment_paysto_order_status_id'), 'Paysto', true);
                     } catch (\Exception $exception) {
                         $this->log->write($exception->getMessage());
                         exit();
