@@ -31,66 +31,48 @@ class ControllerExtensionPaymentPaysto extends Controller
         $product_amount = 0;
 
         if ($order_products) {
-            foreach ($order_products as $order_product) {
-                $data['order_check'][] = array(
-                    'name' => $order_product['name'],
-                    'price' => $order_product['price'],
-                    'quantity' => $order_product['quantity'],
-                    'tax' => $this->config->get('tax_status') ? $this->getTax($order_product['product_id']) : self::STATUS_TAX_OFF,
-                );
+            foreach ($order_products as $pos => $order_product) {
+                $lineArr = array();
+                $lineArr[] = '№' . $pos;
+                $lineArr[] = substr($order_product['model'], 0, 30);
+                $lineArr[] = substr($order_product['name'], 0, 254);
+                $lineArr[] = substr($order_product['quantity'], 0, 254);
+                $lineArr[] = number_format($order_product['price'], 2, '.',
+                    '');
+                $lineArr[] = $this->config->get('tax_status') ? $this->getTax($order_product['product_id']) : self::STATUS_TAX_OFF;
+                $x_line_item .= implode('<|>', $lineArr) . "0<|>\n";
 
                 $product_amount += $order_product['price'] * $order_product['quantity'];
-
             }
         }
 
-        // Доставка товара
-        // Так как мы не нашли как получить сумму доставки из заказа пришлось ее вычислять из закака
+        ///delivery service
+        $pos++;
 
-        $data['order_check'][] = array(
-            'name' => $order['shipping_method'],
-            'price' => $order['total'] - $product_amount,
-            'quantity' => 1,
-            'tax' => self::STATUS_TAX_OFF,
-        );
-
-        if (count($data['order_check']) > self::MAX_POS_IN_CHECK) {
-            $data['error_warning'] = $this->language->get('error_max_pos');
+        if ($order['total'] > $product_amount) {
+            $lineArr = array();
+            $lineArr[] = '№' . $pos;
+            $lineArr[] = 'Delivery';
+            $lineArr[] = substr($order['shipping_method'], 0, 254);
+            $lineArr[] = '1';
+            $lineArr[] = number_format($order['total'] - $product_amount, 2, '.',
+                '');
+            $lineArr[] = self::STATUS_TAX_OFF;
+            $x_line_item .= implode('<|>', $lineArr) . "0<|>\n";
         }
 
+        if ($pos > self::MAX_POS_IN_CHECK) {
+            $data['error_warning'] = $this->language->get('error_max_pos');
+        }
         $data['pos'] = self::BEGIN_POS_IN_CHECK;
 
-        $this->load->model('checkout/order');
-
-        $order_info = $this->model_checkout_order->getOrder($this->session->data['order_id']);
-        $data['x_login'] = $this->config->get('payment_paysto_x_login');
-        $data['email'] = $order_info['email'];
-        $data['order_id'] = $this->session->data['order_id'];
-        $data['amount'] = number_format($order_info['total'], 2, ".", "");
-        $data['lmi_currency'] = $order_info['currency_code'];
-        $secret_key = htmlspecialchars_decode($this->config->get('payment_paysto_secret_key'));
-
-        // Формируем подпись
-        $hash_alg = $this->config->get('payment_paysto_hash_alg');
-        $plain_sign = $data['x_login'] . $data['order_id'] . $data['amount'] . $data['lmi_currency'] . $secret_key;
-        $data['sign'] = base64_encode(hash($hash_alg, $plain_sign, true));
-
-        // Работаем с URL
-        $data['payment_notification_url'] = $this->url->link('extension/payment/paysto/callback', '', true);
-        $data['success_url'] = $this->url->link('extension/payment/paysto/success', '', true);
-        $data['fail_url'] = $this->url->link('extension/payment/paysto/fail', '', true);
-
-        $data['description'] = $this->language->get('text_order') . ' ' . $data['order_id'];
-        
-        /*************************************************************************************************************/
-        $data['pos'] = self::BEGIN_POS_IN_CHECK;
         $this->load->model('checkout/order');
         $order = $this->model_checkout_order->getOrder($this->session->data['order_id']);
         $amount = number_format($order['total'], 2, ".", "");
         $currency = strtoupper($order['currency_code']);
         $order_id = $this->session->data['order_id'];
         $now = time();
-    
+
         $data['x_login'] = $this->config->get('paysto_x_login');
         $data['x_email'] = $order['email'];
         $data['x_fp_sequence'] = $order_id;
@@ -102,50 +84,10 @@ class ControllerExtensionPaymentPaysto extends Controller
         $data['x_fp_hash'] = $this->get_x_fp_hash($this->config->get('paysto_x_login'), $order_id,
             $now, $amount, $currency);
         $data['x_relay_response'] = 'TRUE';
-        $data['x_relay_url'] = $this->url->link('extension/payment/paysto/callback', false);
-    
-        $order_products = $this->cart->getProducts();
-    
-        //product
-        if ($order_products) {
-            foreach ($order_products as $pos => $order_product) {
-                $lineArr = array();
-                $lineArr[] = '№' . $pos;
-                $lineArr[] = substr($order_product['model'], 0, 30);
-                $lineArr[] = substr($order_product['name'], 0, 254);
-                $lineArr[] = substr($order_product['quantity'], 0, 254);
-                $lineArr[] = number_format($order_product['price'], 2, '.',
-                    '');
-                $lineArr[] = $this->config->get('tax_status') ? $this->getTax($order_product['product_id']) : self::STATUS_TAX_OFF;
-                $x_line_item .= implode('<|>', $lineArr) . "0<|>\n";
-            }
-        }
-    
-        $order_totals = $this->model_account_order->getOrderTotals($this->session->data['order_id']);
-    
-        //delivery service
-        $pos++;
-    
-        foreach ($order_totals as $service) {
-            if (in_array($service['code'], $services) && ($service['value'] > 0)) {
-                $lineArr = array();
-                $lineArr[] = '№' . $pos;
-                $lineArr[] = substr($service['code'], 0, 30);
-                $lineArr[] = substr($service['title'], 0, 254);
-                $lineArr[] = '1';
-                $lineArr[] = number_format($service['value'], 2, '.',
-                    '');
-                $lineArr[] = self::STATUS_TAX_OFF;
-                $x_line_item .= implode('<|>', $lineArr) . "0<|>\n";
-                $pos++;
-            }
-        }
-    
+        $data['x_relay_url'] = $this->url->link('extension/payment/paysto/callback', '' ,false);
+
         $data['x_line_item'] = $x_line_item;
-        
-        /*************************************************************************************************************/
-        
-        
+
         $this->createLog(__METHOD__, $data);
 
         return $this->load->view('extension/payment/paysto', $data);
@@ -153,41 +95,53 @@ class ControllerExtensionPaymentPaysto extends Controller
 
 
     /**
-     * Логироание не мое
-     * @param  [type] $method метод (страница)
-     * @param  array $data данные (для дампа)
-     * @param  string $text текст (для описания)
-     * @return [type]         [description]
+     * Return hash md5 HMAC
+     *
+     * @param $x_login
+     * @param $x_fp_sequence
+     * @param $x_fp_timestamp
+     * @param $x_amount
+     * @param $x_currency_code
+     * @return false|string
      */
-    public function createLog($method, $data = array(), $text = '')
+    private function get_x_fp_hash($x_login, $x_fp_sequence, $x_fp_timestamp, $x_amount, $x_currency_code)
+    {
+        $arr = [$x_login, $x_fp_sequence, $x_fp_timestamp, $x_amount, $x_currency_code];
+        $str = implode('^', $arr);
+        return hash_hmac('md5', $str, $this->config->get('payment_paysto_secret_key'));
+    }
+
+
+    /**
+     * Return sign with MD5 algoritm
+     *
+     * @param $x_login
+     * @param $x_trans_id
+     * @param $x_amount
+     * @return string
+     */
+    private function get_x_MD5_Hash($x_login, $x_trans_id, $x_amount)
+    {
+        return md5($this->config->get('payment_paysto_secret_key') . $x_login . $x_trans_id . $x_amount);
+    }
+
+
+    /**
+     * Logger
+     *
+     * @param $method
+     * @param array $data
+     * @param string $text
+     * @return bool
+     */
+    protected function createLog($method, $data = [], $text = '')
     {
         if ($this->config->get('payment_paysto_log')) {
-            if ($method == 'index') {
-                $order_check = array();
-                foreach ($data['order_check'] as $check) {
-                    $order_check = array(
-                        'LMI_SHOPPINGCART.ITEMS[' . $check['pos'] . '].NAME' => $check['name'],
-                        'LMI_SHOPPINGCART.ITEMS[' . $check['pos'] . '].QTY' => $check['quantity'],
-                        'LMI_SHOPPINGCART.ITEMS[' . $check['pos'] . '].PRICE' => $check['price'],
-                        'LMI_SHOPPINGCART.ITEMS[' . $check['pos'] . '].TAX' => $check['tax'],
-                    );
-                }
-
-                $data = array_merge(array(
-                    'LMI_MERCHANT_ID' => $data['x_login'],
-                    'LMI_PAYMENT_AMOUNT' => $data['amount'],
-                    'LMI_CURRENCY' => $data['lmi_currency'],
-                    'LMI_PAYMENT_NO' => $data['order_id'],
-                    'LMI_PAYMENT_DESC' => $data['description'],
-                    'SIGN' => $data['sign'],
-                ), $order_check);
-            }
-
             $this->log->write('---------PAYSTO START LOG---------');
-            $this->log->write('---Вызываемый метод: ' . $method . '---');
-            $this->log->write('---Описание: ' . $text . '---');
+            $this->log->write('---Callback method: ' . $method . '---');
+            $this->log->write('---Description: ' . $text . '---');
             $this->log->write($data);
-            $this->log->write('---------PAYSTO END LOG---------');
+            $this->log->write('---------PAYSTO END LOG----------');
         }
         return true;
     }
