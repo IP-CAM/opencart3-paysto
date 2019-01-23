@@ -24,13 +24,6 @@ Change the “Status” of the module to “Enabled”.
 Also, change the tax rates for products that are necessary to break through the cash voucher with or without VAT.
 Click "Save."
 
-To work with online cashier: Add tax classes
-    2. Tax rates in tax classes must be empty
-    3. Enter the settings of the Paysto module
-    4. Assign tax class to tax rate
-    5. Add all goods tax class
-    6. Include tax accounting
-
 ------------------------------------------------------------------------------------------------------------------------
 
 Модуль оплаты для Opencart 3.x.x - Paysto
@@ -58,10 +51,3 @@ To work with online cashier: Add tax classes
 Измените "Статус" модуля на "Включен".
 Также измените налоговые ставки для продуктов, которые необходимы для пробития кассового чека с НДС или без НДС.
 Нажмите кнопку "Сохранить".
-
-Для работы с онлайн-кассой:   Добавляем налоговые классы
-    2. Налоговые ставки в налоговых классах должны быть пустые
-    3. Входим в настройки модуля Paysto
-    4. Присваиваем налоговый класс к налоговой ставке
-    5. Добавляем всем товарам налоговый класс
-    6. Включаем учет налогов
